@@ -491,4 +491,4 @@ while True:
         print("There is a gpu!")
         print(time.time() - TIME_START)
 
-    print(f"This run took {GLOBAL_SAMPLE_COUNTER} interactions")
+print(f"This run took {GLOBAL_SAMPLE_COUNTER} interactions")
