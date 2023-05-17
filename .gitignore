@@ -1,3 +1,9 @@
+#
+.vscode/
+# 
+imagenet/
+imagenet_raw
+*.ckpt
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
