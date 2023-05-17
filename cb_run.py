@@ -90,14 +90,11 @@ def one_iteration(
     # Chosen players == U?
     # players is a list of filter names in the model (list of strings)
     for n, idx in enumerate(idxs[::-1]):
-        print(idx)
+        # print(idx)
 
         if idx in chosen_players:
             if old_val is None:
                 old_val = value(model, images, labels, metric)
-            # print(players[c[idx]])
-            # print(c[idx])
-            # input()
 
             remove_players(
                 model, players[c[idx]]
