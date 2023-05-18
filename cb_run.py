@@ -76,7 +76,7 @@ def one_iteration(
     if chosen_players is None:
         chosen_players = np.arange(len(c.keys()))
 
-    print(c, chosen_players)
+    # print(c, chosen_players)
     # exit()
     # A random ordering of players
     idxs = np.random.permutation(len(c.keys()))
@@ -435,7 +435,13 @@ elif not isinstance(c, dict):
     c = {i: np.where(np.array(c) == i)[0] for i in set(list(c))}
 
 counter = 0
+new_time = 0
+old_time = 0
 while True:
+    new_time = time.time()
+    # print(f"one iteration: {new_time - old_time} seconds")
+    old_time = new_time
+
     ## Load the list of players (filters) that are determined to be not confident enough
     ## by the cb_aggregate.py running in parallel to this script
     if tf.gfile.Exists(os.path.join(cb_dir, "chosen_players.txt")):
