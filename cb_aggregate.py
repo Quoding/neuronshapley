@@ -52,7 +52,7 @@ while True:
             #     R = 10.0
             else:
                 raise ValueError("Invalid metric!")
-            top_k = 100
+            top_k = 5
             delta = 0.2
             ## Start
             if not tf.gfile.Exists(os.path.join(experiment_dir, "players.txt")):
