@@ -364,7 +364,7 @@ max_sample_size = 128
 # adversarial = (
 #     sys.argv[3] == "True"
 # )  # If True, computes contributions for adversarial setting.
-time.sleep(10 * np.random.random())
+# time.sleep(10 * np.random.random())
 ## Experiment Directory
 experiment_dir = os.path.join(MEM_DIR, f"NShap/toy_model_{seed}/{metric}_new")
 if not tf.gfile.Exists(experiment_dir):
@@ -430,6 +430,7 @@ else:
 # pprint(layer_dic)
 # print("========")
 # pprint(players)
+print(players)
 # input()
 ## Load metric's base value (random performance)
 if metric == "accuracy":
@@ -475,7 +476,19 @@ elif not isinstance(c, dict):
 counter = 0
 new_time = 0
 old_time = 0
+flag_stop = False
+n_samples = []
 while True:
+    cnt = 0
+    while not os.path.isfile(experiment_dir + "/go_run.lock"):
+        time.sleep(0.1)
+        cnt += 1
+        # Unstuck because other script is probably over
+        if cnt > 100:
+            with open(experiment_dir + "/go_run.lock", "w") as f:
+                f.write("asd")
+    os.remove(experiment_dir + "/go_run.lock")
+
     new_time = time.time()
     # print(f"one iteration: {new_time - old_time} seconds")
     old_time = new_time
@@ -486,10 +499,14 @@ while True:
         chosen_players = open(os.path.join(cb_dir, "chosen_players.txt")).read()
         chosen_players = np.array(chosen_players.split(",")).astype(int)
         if len(chosen_players) == 1:
-            break
+            flag_stop = True
+        # if len(chosen_players) == 1:
+        # with open(experiment_dir + "/go_agg.lock", "w") as f:
+        #     f.write("asd")
     else:
         chosen_players = None
-
+    # print("Outisde of if")
+    # input("====")
     t_init = time.time()
     # iter_images, iter_labels = load_images_labels(
     #     key,
@@ -518,21 +535,47 @@ while True:
         metric=metric,
         truncation=truncation,
     )
+
+    # print("here")
+    # print(mem_tmc)
+    # print(vals)
     mem_tmc = np.concatenate([mem_tmc, vals])
+    # print(mem_tmc)
+    # input()
+
+    # print("idxs")
+    # print(idxs_tmc)
+    # print(idxs)
     idxs_tmc = np.concatenate([idxs_tmc, idxs])
+    n_samples.append(GLOBAL_SAMPLE_COUNTER)
+    # print(idxs_tmc)
+    # input()
     ## Save results every SAVE_FREQ iterations
-    if counter % SAVE_FREQ == SAVE_FREQ - 1:
+    if counter % SAVE_FREQ == SAVE_FREQ - 1 or GLOBAL_SAMPLE_COUNTER >= 20000:
         with h5py.File(save_dir, "w") as foo:
             foo.create_dataset("mem_tmc", data=mem_tmc, compression="gzip")
             foo.create_dataset("idxs_tmc", data=idxs_tmc, compression="gzip")
+            foo.create_dataset(
+                "n_samples", data=np.array(n_samples), compression="gzip"
+            )
+            print("Just wrote n_samples: ", n_samples[-1], GLOBAL_SAMPLE_COUNTER)
 
     counter += 1
-    print(time.time() - t_init, time.time() - TIME_START)
-    if not tf.test.is_gpu_available():
-        print("No gpu!")
-        print(time.time() - TIME_START)
-    else:
-        print("There is a gpu!")
-        print(time.time() - TIME_START)
+    # print(time.time() - t_init, time.time() - TIME_START)
+    # if not tf.test.is_gpu_available():
+    #     print("No gpu!")
+    #     print(time.time() - TIME_START)
+    # else:
+    #     print("There is a gpu!")
+    #     print(time.time() - TIME_START)
+
+    if GLOBAL_SAMPLE_COUNTER >= 20000:
+        print("Exited with {} samples".format(GLOBAL_SAMPLE_COUNTER))
+        with open(experiment_dir + "/go_agg.lock", "w") as f:
+            f.write("asd")
+        exit()
+
+    with open(experiment_dir + "/go_agg.lock", "w") as f:
+        f.write("asd")
 
 print(f"This run took {GLOBAL_SAMPLE_COUNTER} interactions")

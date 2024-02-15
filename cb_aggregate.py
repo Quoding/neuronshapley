@@ -15,17 +15,18 @@ adversarials = sys.argv[4]
 model_seed = sys.argv[5]
 
 np.random.seed(int(model_seed))
-
+total_samples = 0
+time.sleep(5)
+flag_stop = False
 while True:
-    time.sleep(10)
     for adv in adversarials.split(","):
         print(adv)
         adversarial = adv == "True"
         for key in keys.split(","):
             bound = "Bernstein"
             truncation = 0.2
-            if metric == "logit":
-                truncation = 3443
+            # if metric == "logit":
+            #     truncation = 3443
             # max_sample_size = 128
             ## Experiment Directory
             experiment_dir = os.path.join(
@@ -54,6 +55,7 @@ while True:
                 raise ValueError("Invalid metric!")
             top_k = 5
             delta = 0.2
+
             ## Start
             if not tf.gfile.Exists(os.path.join(experiment_dir, "players.txt")):
                 print("Does not exist!")
@@ -62,11 +64,26 @@ while True:
                 open(os.path.join(experiment_dir, "players.txt")).read().split(",")
             )
             players = np.array(players)
+            print(players)
             if not tf.gfile.Exists(os.path.join(cb_dir, "chosen_players.txt")):
                 open(os.path.join(cb_dir, "chosen_players.txt"), "w").write(
                     ",".join(np.arange(len(players)).astype(str))
                 )
 
+            # Wait for CB_run
+            with open(experiment_dir + "/go_run.lock", "w") as f:
+                f.write("asd")
+            cnt = 0
+            while not os.path.isfile(experiment_dir + "/go_agg.lock"):
+                time.sleep(0.1)
+                cnt += 1
+                print("stuck in while loop")
+                # Unstick because cb_run probably already is over
+                if cnt > 100:
+                    with open(experiment_dir + "/go_agg.lock", "w") as f:
+                        f.write("asd")
+                    print("Wrote file")
+            os.remove(experiment_dir + "/go_agg.lock")
             results = np.sort(
                 [
                     saved
@@ -76,10 +93,12 @@ while True:
             )
             squares, sums, counts = [np.zeros(len(players)) for _ in range(3)]
             max_vals, min_vals = -np.ones(len(players)), np.ones(len(players))
+            total_samples = 0
             for result in results:
                 try:
                     with h5py.File(os.path.join(cb_dir, result), "r") as foo:
                         mem_tmc = foo["mem_tmc"][:]
+                        n_samples = foo["n_samples"][-1]
                 except:
                     continue
                 if not len(mem_tmc):
@@ -87,10 +106,12 @@ while True:
                 sums += np.sum((mem_tmc != -1) * mem_tmc, 0)
                 squares += np.sum((mem_tmc != -1) * (mem_tmc**2), 0)
                 counts += np.sum(mem_tmc != -1, 0)
-                # temp = mem_tmc * (mem_tmc != -1) - 1000 * (mem_tmc == -1)
-                # max_vals = np.maximum(max_vals, np.max(temp, 0))
-                # temp = mem_tmc * (mem_tmc != -1) + 1000 * (mem_tmc == -1)
-                # min_vals = np.minimum(min_vals, np.min(temp, 0))
+                total_samples += n_samples
+            print("Loaded {} samples".format(total_samples))
+            # temp = mem_tmc * (mem_tmc != -1) - 1000 * (mem_tmc == -1)
+            # max_vals = np.maximum(max_vals, np.max(temp, 0))
+            # temp = mem_tmc * (mem_tmc != -1) + 1000 * (mem_tmc == -1)
+            # min_vals = np.minimum(min_vals, np.min(temp, 0))
             counts = np.clip(counts, 1e-12, None)
             vals = sums / (counts + 1e-12)
             variances = R * np.ones_like(vals)
@@ -109,10 +130,12 @@ while True:
                 cbs[counts > 1] = np.sqrt(
                     2 * variances[counts > 1] * np.log(2 / delta) / counts[counts > 1]
                 ) + 7 / 3 * R * np.log(2 / delta) / (counts[counts > 1] - 1)
+
             thresh = (vals)[np.argsort(vals)[-top_k - 1]]
             chosen_players = np.where(
                 ((vals - cbs) < thresh) * ((vals + cbs) > thresh)
             )[0]
+
             print("Statistics below: cb_dir, np.mean(counts), len(chosen_players)")
             print(cb_dir, np.mean(counts), len(chosen_players))
 
@@ -141,5 +164,25 @@ while True:
             open(os.path.join(cb_dir, "counts_cumul.txt"), "a").write(
                 ",".join(counts.astype(str)) + "\n"
             )
+            open(os.path.join(cb_dir, "n_samples_cumul.txt"), "a").write(
+                str(total_samples) + "\n"
+            )
+
             if len(chosen_players) == 1:
-                break
+                with open(experiment_dir + "/final_samples", "a") as f:
+                    f.write(str(total_samples) + "\n")
+                flag_stop = True
+
+            if total_samples >= 20000:
+                print("Final top_k")
+                print(np.argsort(vals)[-top_k - 1 :])
+                with open(experiment_dir + "/go_run.lock", "w") as f:
+                    f.write("asd")
+                exit()
+
+            #     print("Final top_k")
+            #     print(np.argsort(vals)[: -top_k - 1])
+            #     exit()
+        #         break
+        # if len(chosen_players)== 1:
+        #     break
