@@ -8,13 +8,13 @@ import h5py
 
 MEM_DIR = "./results"
 
-
-np.random.seed(0)
 keys = sys.argv[1]
 metric = sys.argv[2]
 num_images = int(sys.argv[3])
 adversarials = sys.argv[4]
-seed = sys.argv[5]
+model_seed = sys.argv[5]
+
+np.random.seed(int(model_seed))
 
 while True:
     time.sleep(10)
@@ -29,13 +29,13 @@ while True:
             # max_sample_size = 128
             ## Experiment Directory
             experiment_dir = os.path.join(
-                MEM_DIR, "NShap/toy_model_{}/{}_new".format(seed, metric)
+                MEM_DIR, "NShap/toy_model_{}/{}_new".format(model_seed, metric)
             )
             if not tf.gfile.Exists(experiment_dir):
                 tf.gfile.MakeDirs(experiment_dir)
             # if max_sample_size is None or max_sample_size > num_images:
             #     max_sample_size = num_images
-            experiment_name = f"cb_{seed}_{truncation}"
+            experiment_name = f"cb_{model_seed}_{truncation}"
             if adversarial:
                 experiment_name = "ADV" + experiment_name
             cb_dir = os.path.join(experiment_dir, experiment_name)
