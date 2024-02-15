@@ -14,6 +14,8 @@ keys = sys.argv[1]
 metric = sys.argv[2]
 num_images = int(sys.argv[3])
 adversarials = sys.argv[4]
+seed = sys.argv[5]
+
 while True:
     time.sleep(10)
     for adv in adversarials.split(","):
@@ -24,16 +26,16 @@ while True:
             truncation = 0.2
             if metric == "logit":
                 truncation = 3443
-            max_sample_size = 128
+            # max_sample_size = 128
             ## Experiment Directory
             experiment_dir = os.path.join(
-                MEM_DIR, "NShap/inceptionv3/{}_{}_new".format(metric, key)
+                MEM_DIR, "NShap/toy_model_{}/{}_new".format(seed, metric)
             )
             if not tf.gfile.Exists(experiment_dir):
                 tf.gfile.MakeDirs(experiment_dir)
-            if max_sample_size is None or max_sample_size > num_images:
-                max_sample_size = num_images
-            experiment_name = "cb_{}_{}_{}".format(bound, truncation, max_sample_size)
+            # if max_sample_size is None or max_sample_size > num_images:
+            #     max_sample_size = num_images
+            experiment_name = f"cb_{seed}_{truncation}"
             if adversarial:
                 experiment_name = "ADV" + experiment_name
             cb_dir = os.path.join(experiment_dir, experiment_name)
@@ -42,12 +44,12 @@ while True:
             ##
             if metric == "accuracy":
                 R = 1.0
-            elif metric == "xe_loss":
-                R = np.log(1000)
-            elif metric == "binary":
-                R = 1.0
-            elif metric == "logit":
-                R = 10.0
+            # elif metric == "xe_loss":
+            #     R = np.log(1000)
+            # elif metric == "binary":
+            # R = 1.0
+            # elif metric == "logit":
+            #     R = 10.0
             else:
                 raise ValueError("Invalid metric!")
             top_k = 100
@@ -111,7 +113,9 @@ while True:
             chosen_players = np.where(
                 ((vals - cbs) < thresh) * ((vals + cbs) > thresh)
             )[0]
+            print("Statistics below: cb_dir, np.mean(counts), len(chosen_players)")
             print(cb_dir, np.mean(counts), len(chosen_players))
+
             open(os.path.join(cb_dir, "chosen_players.txt"), "w").write(
                 ",".join(chosen_players.astype(str))
             )
@@ -123,6 +127,19 @@ while True:
             )
             open(os.path.join(cb_dir, "counts.txt"), "w").write(
                 ",".join(counts.astype(str))
+            )
+
+            open(os.path.join(cb_dir, "chosen_players_cumul.txt"), "a").write(
+                ",".join(chosen_players.astype(str)) + "\n"
+            )
+            open(os.path.join(cb_dir, "variances_cumul.txt"), "a").write(
+                ",".join(variances.astype(str)) + "\n"
+            )
+            open(os.path.join(cb_dir, "vals_cumul.txt"), "a").write(
+                ",".join(vals.astype(str)) + "\n"
+            )
+            open(os.path.join(cb_dir, "counts_cumul.txt"), "a").write(
+                ",".join(counts.astype(str)) + "\n"
             )
             if len(chosen_players) == 1:
                 break
