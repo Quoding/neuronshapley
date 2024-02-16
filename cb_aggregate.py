@@ -16,7 +16,7 @@ model_seed = sys.argv[5]
 
 np.random.seed(int(model_seed))
 total_samples = 0
-time.sleep(5)
+time.sleep(1)
 flag_stop = False
 while True:
     for adv in adversarials.split(","):
@@ -24,7 +24,7 @@ while True:
         adversarial = adv == "True"
         for key in keys.split(","):
             bound = "Bernstein"
-            truncation = 0.2
+            truncation = "notrunc"
             # if metric == "logit":
             #     truncation = 3443
             # max_sample_size = 128
@@ -32,8 +32,19 @@ while True:
             experiment_dir = os.path.join(
                 MEM_DIR, "NShap/toy_model_{}/{}_new".format(model_seed, metric)
             )
+
             if not tf.gfile.Exists(experiment_dir):
                 tf.gfile.MakeDirs(experiment_dir)
+
+            with open(experiment_dir + "/go_run.lock", "w") as f:
+                f.write("asd")
+            cnt = 0
+            while not os.path.isfile(experiment_dir + "/go_agg.lock"):
+                time.sleep(0.1)
+                cnt += 1
+                print("stuck in while loop")
+
+            os.remove(experiment_dir + "/go_agg.lock")
             # if max_sample_size is None or max_sample_size > num_images:
             #     max_sample_size = num_images
             experiment_name = f"cb_{model_seed}_{truncation}"
@@ -71,19 +82,12 @@ while True:
                 )
 
             # Wait for CB_run
-            with open(experiment_dir + "/go_run.lock", "w") as f:
-                f.write("asd")
-            cnt = 0
-            while not os.path.isfile(experiment_dir + "/go_agg.lock"):
-                time.sleep(0.1)
-                cnt += 1
-                print("stuck in while loop")
-                # Unstick because cb_run probably already is over
-                if cnt > 100:
-                    with open(experiment_dir + "/go_agg.lock", "w") as f:
-                        f.write("asd")
-                    print("Wrote file")
-            os.remove(experiment_dir + "/go_agg.lock")
+            # # Unstick because cb_run probably already is over
+            # if cnt > 100:
+            #     with open(experiment_dir + "/go_agg.lock", "w") as f:
+            #         f.write("asd")
+            #         f.flush()
+            #     print("Wrote file")
             results = np.sort(
                 [
                     saved
@@ -178,6 +182,7 @@ while True:
                 print(np.argsort(vals)[-top_k - 1 :])
                 with open(experiment_dir + "/go_run.lock", "w") as f:
                     f.write("asd")
+                    f.flush()
                 exit()
 
             #     print("Final top_k")

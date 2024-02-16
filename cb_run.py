@@ -109,20 +109,20 @@ def one_iteration(
             new_val = value(model, images, labels, metric)
             marginals[c[idx]] = (old_val - new_val) / len(c[idx])
             old_val = new_val
-            if isinstance(truncation, int):
-                if n >= truncation:
-                    break
-            else:
-                if n % 10 == 0:
-                    # print("icitte")
-                    print(n, time.time() - t, new_val)
-                val_diff = new_val - base_value
-                if metric == "accuracy" and val_diff <= truncation:
-                    truncation_counter += 1
-                else:
-                    truncation_counter = 0
-                if truncation_counter > 5:
-                    break
+            # if isinstance(truncation, int):
+            #     if n >= truncation:
+            #         break
+            # else:
+            #     if n % 10 == 0:
+            #         # print("icitte")
+            #         print(n, time.time() - t, new_val)
+            #     val_diff = new_val - base_value
+            #     if metric == "accuracy" and val_diff <= truncation:
+            #         truncation_counter += 1
+            #     else:
+            #         truncation_counter = 0
+            #     if truncation_counter > 5:
+            #         break
         else:
             old_val = None
     return idxs.reshape((1, -1)), marginals.reshape((1, -1))
@@ -143,7 +143,7 @@ def value(model, images, labels, metric="accuracy", batch_size=BATCH_SIZE):
 seed = sys.argv[1]
 metric = sys.argv[2]  # metric one of accuracy, binary, xe_loss.
 bound = "Bernstein"
-truncation = 0.2
+truncation = "notrunc"
 max_sample_size = 128
 # time.sleep(10 * np.random.random())
 ## Experiment Directory
@@ -216,6 +216,7 @@ if len(results):
     experiment_number += np.max(results_experiment_numbers) + 1
 print(experiment_number)
 save_dir = os.path.join(cb_dir, "{}.h5".format("0" + str(experiment_number).zfill(5)))
+print(save_dir)
 ## Create placeholder for results in save ASAP to prevent having the
 ## same expriment_number with other parallel cb_run.py scripts
 mem_tmc = np.zeros((0, len(players)))
@@ -236,16 +237,20 @@ new_time = 0
 old_time = 0
 flag_stop = False
 n_samples = []
+# time.sleep(5)
 while True:
     cnt = 0
+    print("HERE")
+    print(os.path.isfile(experiment_dir + "/go_run.lock"))
     while not os.path.isfile(experiment_dir + "/go_run.lock"):
         time.sleep(0.1)
-        cnt += 1
-        # Unstuck because other script is probably over
-        if cnt > 100:
-            with open(experiment_dir + "/go_run.lock", "w") as f:
-                f.write("asd")
-    os.remove(experiment_dir + "/go_run.lock")
+        print("cb_run in while loop")
+        # cnt += 1
+        # # Unstuck because other script is probably over
+        # if cnt > 100:
+        #     with open(experiment_dir + "/go_run.lock", "w") as f:
+        #         f.write("asd")
+        #         f.flush()
 
     new_time = time.time()
     # print(f"one iteration: {new_time - old_time} seconds")
@@ -333,6 +338,7 @@ while True:
             f.write("asd")
         exit()
 
+    os.remove(experiment_dir + "/go_run.lock")
     with open(experiment_dir + "/go_agg.lock", "w") as f:
         f.write("asd")
 
