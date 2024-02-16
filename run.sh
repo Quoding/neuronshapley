@@ -1,6 +1,7 @@
 #!/bin/bash
-for j in {0..0}
+for j in {0..1}
 do
+
   echo "Currently on seed $j"
   python -u cb_aggregate.py all accuracy 25000 False $j > output_agg_$j &
   for i in {0..0}
